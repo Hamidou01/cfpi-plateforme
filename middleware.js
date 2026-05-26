@@ -6,16 +6,21 @@ export async function middleware(request) {
     request: { headers: request.headers },
   })
 
-  const supabase = createServerClient(
+const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value, options))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value, options)
+          })
+          // On s'assure que la réponse est mise à jour avec les nouveaux cookies
           response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
         },
       },
     }

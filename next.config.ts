@@ -1,10 +1,10 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* Configuration des origines autorisées pour le développement */
-  allowedDevOrigins: ['192.168.0.100', 'localhost:3000'],
+  // Ajout de l'IP détectée par vos logs (172.20.160.1) et de localhost
+  allowedDevOrigins: ['172.20.160.1', '192.168.0.102', 'localhost:3000'],
   
-  /* Tes autres options si nécessaire */
-};
+  // vos autres options de configuration...
+}
 
-export default nextConfig;
+export default nextConfig
