@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import CatalogueClient from '@/components/formations/CatalogueClient'
 
+// ✨ AJOUT : Force Next.js à recharger la page dynamiquement à chaque visite (pas de cache)
+export const dynamic = 'force-dynamic'
+
 async function getFormations() {
   const { data, error } = await supabase
     .from('formations')
