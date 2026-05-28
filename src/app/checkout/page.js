@@ -4,6 +4,9 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
+// Fonction de temporisation propre compatible async/await
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
 function CheckoutContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -39,11 +42,12 @@ function CheckoutContent() {
     e.preventDefault()
     if (!formation || !user) return
     setPaying(true)
-    setMessage('')
+    setMessage('Initialisation de la transaction...')
 
     const transactionId = 'CFPI-' + Date.now()
 
-    await supabase.from('paiements').insert({
+    // 1. Enregistrement initial du paiement en attente
+    const { error: errInsert } = await supabase.from('paiements').insert({
       user_id:        user.id,
       formation_id:   formation.id,
       montant:        formation.prix,
@@ -51,32 +55,45 @@ function CheckoutContent() {
       transaction_id: transactionId,
     })
 
-    setTimeout(async () => {
-      await supabase
-        .from('paiements')
-        .update({ statut: 'confirme' })
-        .eq('transaction_id', transactionId)
-
-      const { data: insExiste } = await supabase
-        .from('inscriptions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('formation_id', formation.id)
-        .single()
-
-      if (!insExiste) {
-        await supabase.from('inscriptions').insert({
-          user_id:      user.id,
-          formation_id: formation.id,
-          progression:  0,
-          statut:       'actif',
-        })
-      }
-
-      setMessage('Paiement confirmé ! Redirection vers votre cours...')
+    if (errInsert) {
+      alert("Erreur de paiement : " + errInsert.message)
       setPaying(false)
-      setTimeout(() => router.push(`/cours/${formation.id}`), 1500)
-    }, 2000)
+      return
+    }
+
+    // Simulation du délai de traitement bancaire (2 secondes)
+    await delay(2000)
+
+    // 2. Mise à jour du statut du paiement
+    await supabase
+      .from('paiements')
+      .update({ statut: 'confirme' })
+      .eq('transaction_id', transactionId)
+
+    // 3. Vérification de l'inscription existante
+    const { data: insExiste } = await supabase
+      .from('inscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('formation_id', formation.id)
+      .maybeSingle() // Évite de lever une exception si vide
+
+    // 4. Inscription définitive de l'étudiant
+    if (!insExiste) {
+      await supabase.from('inscriptions').insert({
+        user_id:      user.id,
+        formation_id: formation.id,
+        statut:       'valide', // Passe à valide automatiquement pour la simulation
+        reference_paiement: transactionId,
+        mode_paiement: methode === 'mobile_money' ? 'Mobile Money' : 'Carte Bancaire'
+      })
+    }
+
+    setMessage('Paiement confirmé ! Redirection vers votre tableau de bord...')
+    setPaying(false)
+    
+    await delay(1500)
+    router.push('/dashboard')
   }
 
   if (loading) {
@@ -128,9 +145,8 @@ function CheckoutContent() {
             {/* Méthodes de paiement */}
             <div style={{display:'flex', flexDirection:'column', gap:'10px', marginBottom:'24px'}}>
               {[
-                { id:'mobile_money', label:'Mobile Money', desc:'Orange Money · Moov Money', color:'#f97316' },
-                { id:'carte',        label:'Carte bancaire', desc:'Visa · Mastercard',         color:'#1d4ed8' },
-                { id:'virement',     label:'Virement bancaire', desc:'Paiement différé',        color:'#7e22ce' },
+                { id:'mobile_money', label:'Mobile Money', desc:'Orange Money · Moov Money' },
+                { id:'carte',        label:'Carte bancaire', desc:'Visa · Mastercard' },
               ].map((m) => (
                 <div
                   key={m.id}
@@ -197,89 +213,14 @@ function CheckoutContent() {
               </form>
             )}
 
-            {/* Virement */}
-            {methode === 'virement' && (
-              <div>
-                <div style={{background:'#f0fdf4', border:'1px solid #d1fae5', borderRadius:'10px', padding:'16px', marginBottom:'20px'}}>
-                  {[
-                    { label:'Banque',  value:'Coris Bank International' },
-                    { label:'IBAN',    value:'BF00 0000 0000 0000 0000' },
-                    { label:'Motif',   value:`CFPI-${user?.email}` },
-                    { label:'Montant', value: formation?.prix ? Number(formation.prix).toLocaleString('fr-FR') + ' FCFA' : '' },
-                  ].map((r, i) => (
-                    <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom: i < 3 ? '1px solid #d1fae5' : 'none', fontSize:'13px'}}>
-                      <span style={{color:'#166534'}}>{r.label}</span>
-                      <span style={{color:'#14532d', fontWeight:'500'}}>{r.value}</span>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={handlePaiement} disabled={paying}
-                  style={{width:'100%', background: paying ? '#86efac' : '#16a34a', color:'#fff', border:'none', borderRadius:'10px', padding:'14px', fontSize:'14px', fontWeight:'500', cursor: paying ? 'not-allowed' : 'pointer'}}>
-                  {paying ? 'Traitement...' : 'Confirmer le virement'}
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* RÉCAPITULATIF */}
-          <div style={{background:'#fff', border:'1px solid #d1fae5', borderRadius:'16px', padding:'24px', position:'sticky', top:'72px'}}>
-            <h3 style={{fontSize:'16px', fontWeight:'500', color:'#14532d', margin:'0 0 16px'}}>
-              Récapitulatif
-            </h3>
-
-            {formation && (
-              <>
-                <div style={{background:'#f0fdf4', borderRadius:'10px', padding:'14px', marginBottom:'16px'}}>
-                  <p style={{fontSize:'13px', fontWeight:'500', color:'#14532d', margin:'0 0 4px'}}>{formation.titre}</p>
-                  <p style={{fontSize:'12px', color:'#166534', margin:0}}>{formation.duree} · {formation.mode?.replace('_', ' ')}</p>
-                </div>
-
-                <div style={{borderTop:'1px solid #d1fae5', paddingTop:'14px', marginBottom:'16px'}}>
-                  {[
-                    { label:'Sous-total', value: Number(formation.prix).toLocaleString('fr-FR') + ' FCFA' },
-                    { label:'Frais',      value: '0 FCFA' },
-                  ].map((r, i) => (
-                    <div key={i} style={{display:'flex', justifyContent:'space-between', fontSize:'13px', color:'#166534', marginBottom:'8px'}}>
-                      <span>{r.label}</span>
-                      <span>{r.value}</span>
-                    </div>
-                  ))}
-                  <div style={{display:'flex', justifyContent:'space-between', fontSize:'15px', fontWeight:'500', color:'#14532d', borderTop:'1px solid #d1fae5', paddingTop:'10px', marginTop:'4px'}}>
-                    <span>Total</span>
-                    <span style={{color:'#16a34a'}}>{Number(formation.prix).toLocaleString('fr-FR')} FCFA</span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-              {[
-                'Paiement 100% sécurisé',
-                'Accès immédiat après paiement',
-                'Certificat inclus',
-                'Support disponible',
-              ].map((item, i) => (
-                <div key={i} style={{display:'flex', gap:'8px', alignItems:'center', fontSize:'12px', color:'#166534'}}>
-                  <div style={{width:'14px', height:'14px', borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                      <path d="M2 5l2 2 4-4" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  {item}
-                </div>
-              ))}
+          {/* RÉCAPITULATIF COMMANDE */}
+          <div style={{background:'#fff', border:'1px solid #d1fae5', borderRadius:'16px', padding:'24px', position:'sticky', top:'40px'}}>
+            <h2 style={{fontSize:'15px', fontWeight:'600', color:'#14532d', margin:'0 0 16px'}}>Résumé de la commande</h2>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'12px', fontSize:'14px', color:'#166534'}}>
+              <span>{formation?.titre || 'Formation'}</span>
+              <span style={{fontWeight:'500'}}>{formation?.prix ? Number(formation.prix).toLocaleString('fr-FR') + ' FCFA' : '0'}</span>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function CheckoutPage() {
-  return (
-    <Suspense fallback={<div style={{minHeight:'60vh', display:'flex', alignItems:'center', justifyContent:'center'}}><p style={{color:'#166534'}}>Chargement...</p></div>}>
-      <CheckoutContent />
-    </Suspense>
-  )
-}
+            <div style={{borderTop:'1px solid #f0fdf4', marginTop:'16px', paddingTop:'16px', display:'flex', justifyContent:'space-between', fontSize:'16px', fontWeight:'600', color:'#14532d'}}>
+              <span>Total</span>
