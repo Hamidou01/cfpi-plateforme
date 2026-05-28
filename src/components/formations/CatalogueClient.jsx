@@ -53,7 +53,9 @@ export default function CatalogueClient({ formations }) {
         </div>
 
         {filtered.length > 0 ? (
-          <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'16px'}}>
+          
+          <div style={{display:'flex', flexDirection:'column', gap:'16px', width:'100%'}}>
+
             {filtered.map(f => (
               <FormationCard key={f.id} formation={f} />
             ))}
