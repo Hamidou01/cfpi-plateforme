@@ -2,6 +2,9 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+// ✨ AJOUT : Coupe le cache agressif de Next.js pour cette page dynamique
+export const dynamic = 'force-dynamic'
+
 async function getFormation(id) {
   const { data, error } = await supabase
     .from('formations')
@@ -14,12 +17,14 @@ async function getFormation(id) {
 }
 
 export default async function FormationDetailPage({ params }) {
-  const formation = await getFormation(params.id)
+  // ✨ CORRECTION CRITIQUE : Résolution asynchrone des paramètres de l'URL
+  const resolvedParams = await params
+  const formation = await getFormation(resolvedParams.id)
 
   if (!formation) notFound()
 
   const {
-    titre, description, prix, duree, mode,
+    id, titre, description, prix, duree, mode,
     categorie, niveau, formateur, nb_apprenants, programme
   } = formation
 
@@ -37,7 +42,7 @@ export default async function FormationDetailPage({ params }) {
     intermediaire: 'Intermédiaire',
     avance:        'Avancé',
     tous:          'Tous niveaux',
-  }[niveau] || niveau
+  }[niveau] || niveau || 'Tous niveaux'
 
   return (
     <div>
@@ -63,7 +68,7 @@ export default async function FormationDetailPage({ params }) {
                   {categorieLabel}
                 </span>
                 <span style={{fontSize:'11px', fontWeight:'500', background:modeColor.bg, color:modeColor.color, padding:'4px 10px', borderRadius:'20px'}}>
-                  {mode?.replace('_', ' ')}
+                  {mode?.replace('_', ' ') || 'En ligne'}
                 </span>
                 <span style={{fontSize:'11px', fontWeight:'500', background:'#fef9c3', color:'#854d0e', padding:'4px 10px', borderRadius:'20px'}}>
                   {niveauLabel}
@@ -80,7 +85,7 @@ export default async function FormationDetailPage({ params }) {
               {/* Méta infos */}
               <div style={{display:'flex', gap:'24px', flexWrap:'wrap'}}>
                 {[
-                  { label: 'Durée',      value: duree },
+                  { label: 'Durée',      value: duree || 'Non spécifiée' },
                   { label: 'Formateur',  value: formateur || 'CFPI' },
                   { label: 'Apprenants', value: (nb_apprenants || 0) + ' inscrits' },
                   { label: 'Niveau',     value: niveauLabel },
@@ -102,7 +107,7 @@ export default async function FormationDetailPage({ params }) {
                 Accès complet · Certificat inclus
               </p>
 
-              <Link href={`/checkout?formation=${formation.id}`}
+              <Link href={`/checkout?formation=${id}`}
                 style={{display:'block', background:'#16a34a', color:'#fff', padding:'14px', borderRadius:'10px', fontSize:'14px', fontWeight:'500', textAlign:'center', textDecoration:'none', marginBottom:'10px'}}>
                 S'inscrire maintenant
               </Link>
@@ -139,7 +144,6 @@ export default async function FormationDetailPage({ params }) {
 
           {/* Colonne gauche */}
           <div>
-
             {/* Programme */}
             <div style={{marginBottom:'40px'}}>
               <h2 style={{fontSize:'20px', fontWeight:'500', color:'#14532d', marginBottom:'20px'}}>
@@ -172,66 +176,12 @@ export default async function FormationDetailPage({ params }) {
               <h2 style={{fontSize:'20px', fontWeight:'500', color:'#14532d', marginBottom:'16px'}}>
                 À qui s'adresse cette formation ?
               </h2>
-              <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'12px'}}>
-                {[
-                  'Étudiants cherchant à acquérir des compétences pratiques',
-                  'Professionnels souhaitant se reconvertir',
-                  'Employés d\'entreprise en développement de compétences',
-                  'Toute personne motivée à apprendre l\'informatique',
-                ].map((item, i) => (
-                  <div key={i} style={{display:'flex', gap:'10px', background:'#f0fdf4', border:'1px solid #d1fae5', borderRadius:'10px', padding:'14px'}}>
-                    <div style={{width:'20px', height:'20px', borderRadius:'50%', background:'#16a34a', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <span style={{fontSize:'13px', color:'#14532d', lineHeight:'1.5'}}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Formateur */}
-            <div>
-              <h2 style={{fontSize:'20px', fontWeight:'500', color:'#14532d', marginBottom:'16px'}}>
-                Votre formateur
-              </h2>
-              <div style={{display:'flex', gap:'16px', alignItems:'center', background:'#f0fdf4', border:'1px solid #d1fae5', borderRadius:'12px', padding:'20px'}}>
-                <div style={{width:'52px', height:'52px', borderRadius:'50%', background:'#16a34a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:'500', color:'#fff', flexShrink:0}}>
-                  {formateur ? formateur.split(' ').map(w => w[0]).join('').slice(0, 2) : 'CF'}
-                </div>
-                <div>
-                  <div style={{fontSize:'15px', fontWeight:'500', color:'#14532d'}}>{formateur || 'Équipe CFPI'}</div>
-                  <div style={{fontSize:'13px', color:'#16a34a', marginTop:'2px'}}>Formateur certifié · CFPI</div>
-                  <div style={{fontSize:'12px', color:'#166534', marginTop:'6px', lineHeight:'1.5'}}>
-                    Expert avec plusieurs années d'expérience dans la formation professionnelle en informatique à Ouagadougou.
-                  </div>
-                </div>
-              </div>
+              <p style={{color:'#166534', fontSize:'14px', lineHeight:'1.7'}}>
+                Cette formation est ouverte à toute personne motivée désirant monter en compétences sur ces outils de manière opérationnelle.
+              </p>
             </div>
           </div>
 
-          {/* Colonne droite — formations similaires */}
-          <div>
-            <h3 style={{fontSize:'16px', fontWeight:'500', color:'#14532d', marginBottom:'16px'}}>
-              Vous pourriez aussi aimer
-            </h3>
-            <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
-              {[
-                { titre:'JavaScript fondamentaux', prix:'35 000', duree:'6 semaines' },
-                { titre:'React JS moderne',         prix:'50 000', duree:'8 semaines' },
-                { titre:'Word & Excel avancé',      prix:'15 000', duree:'2 semaines' },
-              ].map((f, i) => (
-                <div key={i} style={{background:'#fff', border:'1px solid #d1fae5', borderRadius:'10px', padding:'14px', cursor:'pointer'}}>
-                  <div style={{fontSize:'13px', fontWeight:'500', color:'#14532d', marginBottom:'6px'}}>{f.titre}</div>
-                  <div style={{display:'flex', justifyContent:'space-between', fontSize:'12px', color:'#166534'}}>
-                    <span>{f.duree}</span>
-                    <span style={{color:'#16a34a', fontWeight:'500'}}>{f.prix} FCFA</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
