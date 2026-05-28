@@ -1,10 +1,16 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FormationCard from './FormationCard'
 import FormationFilter from './FormationFilter'
 
 export default function CatalogueClient({ formations }) {
+  // Initialise l'état avec les formations reçues du serveur
   const [filtered, setFiltered] = useState(formations)
+
+  // ✨ INDISPENSABLE : Met à jour l'affichage dès que les données de Supabase arrivent
+  useEffect(() => {
+    setFiltered(formations)
+  }, [formations])
 
   function handleFilter({ search, categorie, mode, niveau }) {
     let result = formations
@@ -21,6 +27,7 @@ export default function CatalogueClient({ formations }) {
     if (mode !== 'tous') {
       result = result.filter(f => f.mode === mode)
     }
+    // Le filtre niveau est conservé et sécurisé avec un opérateur de chaînage optionnel (?.)
     if (niveau !== 'tous') {
       result = result.filter(f => f.niveau === niveau)
     }
