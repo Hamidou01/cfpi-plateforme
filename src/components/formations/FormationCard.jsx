@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 export default function FormationCard({ formation }) {
   const router = useRouter()
-  const { id, titre, description, prix, duree, mode, categorie } = formation
+  const { id, titre, description, prix, duree, mode, categorie, niveau } = formation
   const [loading, setLoading] = useState(false)
 
   const categorieLabel = categorie === 'developpement_web'
@@ -19,11 +19,9 @@ export default function FormationCard({ formation }) {
     hybride:    { bg: '#f3e8ff', color: '#7e22ce' },
   }[mode] || { bg: '#f0fdf4', color: '#15803d' }
 
-  // Correction 1 & 2 : Plus besoin de passer des arguments, on utilise directement les variables de la formation.
   const handleInscription = async () => {
     setLoading(true)
 
-    // Correction 3 : Récupération obligatoire de l'utilisateur connecté pour éviter le crash de "user.id"
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (!user || authError) {
@@ -42,7 +40,6 @@ export default function FormationCard({ formation }) {
       return;
     }
 
-    // Enregistrement dans Supabase
     const { error } = await supabase.from('inscriptions').insert([
       { 
         user_id: user.id, 
@@ -65,7 +62,6 @@ export default function FormationCard({ formation }) {
 
   return (
     <div style={{border:'1px solid #d1fae5', borderRadius:'12px', overflow:'hidden', backgroundColor:'#fff'}}>
-
       <Link href={`/formations/${id}`} style={{textDecoration:'none', display:'block'}}>
         <div style={{backgroundColor:'#f0fdf4', padding:'16px', cursor:'pointer'}}>
           <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'8px'}}>
@@ -75,6 +71,11 @@ export default function FormationCard({ formation }) {
             <span style={{fontSize:'10px', fontWeight:'500', background:modeColor.bg, color:modeColor.color, padding:'3px 8px', borderRadius:'20px'}}>
               {mode?.replace('_', ' ')}
             </span>
+            {niveau && (
+              <span style={{fontSize:'10px', fontWeight:'500', background:'#e0f2fe', color:'#0369a1', padding:'3px 8px', borderRadius:'20px'}}>
+                {niveau}
+              </span>
+            )}
           </div>
           <h3 style={{fontWeight:'500', color:'#14532d', fontSize:'14px', margin:0}}>
             {titre}
@@ -103,8 +104,8 @@ export default function FormationCard({ formation }) {
           <button
             type="button"
             onClick={(e) => {
-              e.stopPropagation() // Empêche le clic d'activer le Link de l'en-tête
-              handleInscription() // Appelé proprement sans arguments vides
+              e.stopPropagation()
+              handleInscription()
             }}
             disabled={loading}
             style={{flex:1, background: loading ? '#86efac' : '#16a34a', color:'#fff', border:'none', borderRadius:'8px', padding:'9px', fontSize:'12px', fontWeight:'500', cursor: loading ? 'not-allowed' : 'pointer'}}>

@@ -4,16 +4,17 @@ import FormationCard from './FormationCard'
 import FormationFilter from './FormationFilter'
 
 export default function CatalogueClient({ formations }) {
-  // Initialise l'état avec les formations reçues du serveur
-  const [filtered, setFiltered] = useState(formations)
+  const [filtered, setFiltered] = useState(formations || [])
 
-  // ✨ INDISPENSABLE : Met à jour l'affichage dès que les données de Supabase arrivent
+  // Force la mise à jour et applique les filtres initiaux proprement
   useEffect(() => {
-    setFiltered(formations)
+    if (formations) {
+      setFiltered(formations)
+    }
   }, [formations])
 
   function handleFilter({ search, categorie, mode, niveau }) {
-    let result = formations
+    let result = [...formations]
 
     if (search) {
       result = result.filter(f =>
@@ -27,9 +28,9 @@ export default function CatalogueClient({ formations }) {
     if (mode !== 'tous') {
       result = result.filter(f => f.mode === mode)
     }
-    // Le filtre niveau est conservé et sécurisé avec un opérateur de chaînage optionnel (?.)
-    if (niveau !== 'tous') {
-      result = result.filter(f => f.niveau === niveau)
+    // Sécurisation : On compare des chaînes nettoyées et on évite le blocage si le champ est absent
+    if (niveau && niveau !== 'tous') {
+      result = result.filter(f => f.niveau?.toLowerCase() === niveau.toLowerCase())
     }
 
     setFiltered(result)
