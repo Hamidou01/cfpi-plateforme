@@ -6,13 +6,18 @@ import { useRouter } from 'next/navigation'
 
 export default function FormationCard({ formation }) {
   const router = useRouter()
-  const { id, titre, description, prix, duree, mode, categorie, niveau } = formation
   const [loading, setLoading] = useState(false)
+
+  // Sécurité absolue : si l'objet formation n'existe pas
+  if (!formation) return null;
+
+  const { id, titre, description, prix, duree, mode, categorie, niveau } = formation
 
   const categorieLabel = categorie === 'developpement_web'
     ? 'Développement web'
     : 'Bureautique'
 
+  // Sécurité pour éviter le crash si le mode est inconnu ou absent
   const modeColor = {
     en_ligne:   { bg: '#dbeafe', color: '#1d4ed8' },
     presentiel: { bg: '#fef9c3', color: '#854d0e' },
@@ -21,7 +26,6 @@ export default function FormationCard({ formation }) {
 
   const handleInscription = async () => {
     setLoading(true)
-
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (!user || authError) {
@@ -32,7 +36,7 @@ export default function FormationCard({ formation }) {
     }
 
     const prixFormate = prix ? Number(prix).toLocaleString('fr-FR') + ' FCFA' : 'Gratuit'
-    const reference = prompt(`Pour valider votre inscription à "${titre}", envoyez ${prixFormate} par Orange Money au +226 XX XX XX XX.\n\nEntrez ici la RÉFÉRENCE de la transaction (ex: PP2603...) :`);
+    const reference = prompt(`Pour valider votre inscription à "${titre || 'cette formation'}", envoyez ${prixFormate} par Orange Money au +226 XX XX XX XX.\n\nEntrez ici la RÉFÉRENCE de la transaction (ex: PP2603...) :`);
 
     if (!reference) {
       alert("L'inscription a été annulée. La référence est obligatoire.");
@@ -61,15 +65,15 @@ export default function FormationCard({ formation }) {
   }
 
   return (
-    <div style={{border:'1px solid #d1fae5', borderRadius:'12px', overflow:'hidden', backgroundColor:'#fff'}}>
-      <Link href={`/formations/${id}`} style={{textDecoration:'none', display:'block'}}>
+    <div style={{border:'1px solid #d1fae5', borderRadius:'12px', overflow:'hidden', backgroundColor:'#fff', marginBottom:'16px', display:'block'}}>
+      <Link href={`/formations/${id || '#'}`} style={{textDecoration:'none', display:'block'}}>
         <div style={{backgroundColor:'#f0fdf4', padding:'16px', cursor:'pointer'}}>
           <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'8px'}}>
             <span style={{fontSize:'10px', fontWeight:'500', background:'#dcfce7', color:'#15803d', padding:'3px 8px', borderRadius:'20px'}}>
               {categorieLabel}
             </span>
             <span style={{fontSize:'10px', fontWeight:'500', background:modeColor.bg, color:modeColor.color, padding:'3px 8px', borderRadius:'20px'}}>
-              {mode?.replace('_', ' ')}
+              {mode ? mode.replace('_', ' ') : 'En ligne'}
             </span>
             {niveau && (
               <span style={{fontSize:'10px', fontWeight:'500', background:'#e0f2fe', color:'#0369a1', padding:'3px 8px', borderRadius:'20px'}}>
@@ -78,26 +82,26 @@ export default function FormationCard({ formation }) {
             )}
           </div>
           <h3 style={{fontWeight:'500', color:'#14532d', fontSize:'14px', margin:0}}>
-            {titre}
+            {titre || 'Formation sans titre'}
           </h3>
         </div>
       </Link>
 
       <div style={{padding:'14px 16px'}}>
         <p style={{fontSize:'12px', color:'#166534', lineHeight:'1.6', marginBottom:'12px'}}>
-          {description}
+          {description || 'Aucune description disponible.'}
         </p>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px'}}>
           <span style={{fontSize:'15px', fontWeight:'500', color:'#16a34a'}}>
             {prix ? Number(prix).toLocaleString('fr-FR') + ' FCFA' : 'Gratuit'}
           </span>
           <span style={{fontSize:'11px', color:'#166534'}}>
-            {duree}
+            {duree || 'Durée non spécifiée'}
           </span>
         </div>
 
         <div style={{display:'flex', gap:'8px'}}>
-          <Link href={`/formations/${id}`}
+          <Link href={`/formations/${id || '#'}`}
             style={{flex:1, border:'1px solid #d1fae5', color:'#166534', borderRadius:'8px', padding:'9px', fontSize:'12px', textAlign:'center', textDecoration:'none', display:'block'}}>
             Voir détails
           </Link>
