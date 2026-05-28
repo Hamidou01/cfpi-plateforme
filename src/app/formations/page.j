@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import CatalogueClient from '@/components/formations/CatalogueClient'
 
+// ✨ AJOUT : Force Next.js à recharger la page dynamiquement à chaque visite (pas de cache)
+export const dynamic = 'force-dynamic'
+
 async function getFormations() {
   const { data, error } = await supabase
     .from('formations')
@@ -19,7 +22,6 @@ export default async function FormationsPage() {
 
   return (
     <div>
-      {/* En-tête page */}
       <div style={{backgroundColor:'#f0fdf4', borderBottom:'1px solid #d1fae5', padding:'32px 24px'}}>
         <div style={{maxWidth:'1152px', margin:'0 auto'}}>
           <h1 style={{fontSize:'28px', fontWeight:'500', color:'#14532d', marginBottom:'6px'}}>
@@ -31,7 +33,6 @@ export default async function FormationsPage() {
         </div>
       </div>
 
-      {/* Contenu principal */}
       <div style={{maxWidth:'1152px', margin:'0 auto', padding:'32px 24px'}}>
         <CatalogueClient formations={formations} />
       </div>
